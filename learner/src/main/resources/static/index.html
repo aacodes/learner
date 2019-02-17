@@ -1,0 +1,119 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Vehicle Search Page</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+    <style>
+        .hovered {
+            font-weight: bold;
+        }
+        .clicked {
+            color: green
+        }
+    </style>
+    <script>
+
+    $(document).ready(function() {
+        $("#searchButton").click(function() {
+            var searchTerm = $("#searchText").val();
+            $.get("http://localhost:8080/vehicles", {q: searchTerm}, function(data) {
+                buildSearchResultTable(data);
+            });
+        });
+        $("#result_table").on("mouseenter mouseleave", "tr#trid", function() {
+            $(this).toggleClass("hovered");
+        });
+
+        $("#result_table").on("click", "tr#trid", function() {
+            var amount = $(this).children().last().text();
+            amount++;
+            var field = [];
+            var i = 0;
+            $(this).closest('tr').find('td').each(function() {
+                field[i] = $(this).text();
+                if (i == 4) {
+                    // set the increment click count
+                    field[i] = amount;
+                }
+                i++;
+            });
+
+            var pdObj = new Object();
+            pdObj.id = field[0];
+            pdObj.type = field[1];
+            pdObj.brand = field[2];
+            pdObj.ckcount = field[4];
+            var jsonStr = JSON.stringify(pdObj);
+
+
+            console.log(jsonStr);
+            $(this).children().last().text(amount);
+            $(this).addClass("clicked");
+
+            $.ajax({
+                type: "POST",
+                url: "http://localhost:8080/vehicles",
+                data: jsonStr,
+                contentType: "application/json; charset=utf-8"
+            });
+        });
+
+    });
+
+
+
+    function buildSearchResultTable(data) {
+        $("#result_table").empty();
+        var createTableStr = "<table id=\"result_table\" class=\"table table-striped\">\n";
+        createTableStr += "<tr><th>Vehicle ID</th><th>Type</th><th>Brand</th>"
+                       + "<th>Score</th><th>Number of Clicks</th></tr>";
+
+        var i;
+        for (i = 0; i < data.length; i++) {
+            createTableStr += "<tr id=\"trid\" class=\"table-success\">\n"
+            + "<td>" + data[i].id + "</td>\n<td>" + data[i].type + "</td>"
+            + "<td>" + data[i].brand + "\n<td>" + data[i].score + "</td>\n"
+            + "<td>" + data[i].ckcount + "</td>";
+            + "</tr>";
+        }
+        createTableStr += "</table>";
+        $("#result_table").append(createTableStr);
+    }
+    </script>
+
+</head>
+<body>
+<div class="container">
+    <table>
+        <tr>
+            <td><h1><label for="searchText">Search for a vehicle</label></h1></td>
+        </tr>
+        <tr>
+            <td><input type="text" id="searchText" class="form-control" placeholder="Enter search term"></td>
+            <td><button id="searchButton" class="btn btn-primary">Search</button></td>
+        </tr>
+    </table>
+</div>
+<div class="container">
+    <p>
+    <h3>Summary</h3>By default if there are no search texts this UI will bring up all the documents currently
+    indexed in solr. Search terms are matched against the "type" and "brand" of vehicle e.g. search by "toyota". To search
+    using id use e.g. "id:A-2". Click on any relevant search results and the number of clicks will
+        increase by 1. Click on search again with the same search term and notice that the previously clicked result
+        is ranked higher up in the result set. Under the hood when a user clicks on a row/result
+        a post request is made to solr to update the click count of the corresponding document.
+        Search is then boosted based on the click counts. Note that indexing one document at a time
+    is not optimal as mentioned here in the <a href="https://lucene.apache.org/solr/guide/7_5/using-solrj.html">solr doc.</a>
+    </p>
+</div>
+<br><br>
+<div class="container" id="div_table">
+    <table id="result_table" class="table table-striped">
+
+    </table>
+</div>
+</body>
+</html>
